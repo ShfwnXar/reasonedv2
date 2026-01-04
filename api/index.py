@@ -2,11 +2,10 @@ from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Callable, Tuple, Optional
-import random, time, os, base64, json, hmac, hashlib
+import random, time, os, base64, json, hmac, hashlib, secrets
 from datetime import datetime, timedelta
 
 import sympy as sp
-from passlib.hash import bcrypt
 import jwt
 
 from sqlalchemy.orm import Session
@@ -52,6 +51,54 @@ JWT_EXPIRE_HOURS = 24 * 7
 FREE_ATTEMPT_LIMIT = 3
 REASONED_SECRET = os.environ.get("REASONED_SECRET", "DEV_QTOKEN_CHANGE_ME")
 
+def b64e(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).decode("utf-8").rstrip("=")
+
+def b64d(s: str) -> bytes:
+    return base64.urlsafe_b64decode(s + "=" * ((4 - len(s) % 4) % 4))
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        120_000
+    )
+    return f"pbkdf2_sha256${salt}${b64e(dk)}"
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        algo, salt, digest_b64 = stored.split("$", 2)
+        if algo != "pbkdf2_sha256":
+            return False
+        dk = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt.encode("utf-8"),
+            120_000
+        )
+        return hmac.compare_digest(b64e(dk), digest_b64)
+    except Exception:
+        return False
+
+def sign(payload: bytes) -> str:
+    return b64e(hmac.new(REASONED_SECRET.encode("utf-8"), payload, hashlib.sha256).digest())
+
+def make_token(data: dict) -> str:
+    raw = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return f"{b64e(raw)}.{sign(raw)}"
+
+def read_token(token: str) -> dict:
+    try:
+        p, sig = token.split(".", 1)
+        raw = b64d(p)
+        if not hmac.compare_digest(sign(raw), sig):
+            raise ValueError("bad signature")
+        return json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
 def make_jwt(user: User) -> str:
     payload = {
         "sub": user.username,
@@ -82,29 +129,6 @@ def get_current_user(
     if not u:
         raise HTTPException(status_code=401, detail="User not found")
     return u
-
-def b64e(b: bytes) -> str:
-    return base64.urlsafe_b64encode(b).decode("utf-8").rstrip("=")
-
-def b64d(s: str) -> bytes:
-    return base64.urlsafe_b64decode(s + "=" * ((4 - len(s) % 4) % 4))
-
-def sign(payload: bytes) -> str:
-    return b64e(hmac.new(REASONED_SECRET.encode("utf-8"), payload, hashlib.sha256).digest())
-
-def make_token(data: dict) -> str:
-    raw = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    return f"{b64e(raw)}.{sign(raw)}"
-
-def read_token(token: str) -> dict:
-    try:
-        p, sig = token.split(".", 1)
-        raw = b64d(p)
-        if not hmac.compare_digest(sign(raw), sig):
-            raise ValueError("bad signature")
-        return json.loads(raw.decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid token")
 
 class RegisterReq(BaseModel):
     username: str = Field(min_length=3, max_length=30)
@@ -149,7 +173,7 @@ def register(req: RegisterReq, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Password maksimal 72 byte/karakter.")
     u = User(
         username=username,
-        password_hash=bcrypt.hash(pw),
+        password_hash=hash_password(pw),
         role="student",
         is_paid=False,
         attempts_used=0,
@@ -164,21 +188,20 @@ def register(req: RegisterReq, db: Session = Depends(get_db)):
 def login(req: LoginReq, db: Session = Depends(get_db)):
     username = req.username.strip().lower()
     u = db.query(User).filter(User.username == username).first()
-    if not u or not bcrypt.verify(req.password, u.password_hash):
+    if not u or not verify_password(req.password, u.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = make_jwt(u)
     return {"token": token, "user": u.username, "role": u.role, "is_paid": u.is_paid}
 
 @app.get("/api/me")
-def me(user=Depends(get_current_user)):
+def me(user: User = Depends(get_current_user)):
     return {
         "user": user.username,
         "role": user.role,
         "attempts_used": user.attempts_used,
-        "free_limit": user.free_limit,
+        "free_limit": FREE_ATTEMPT_LIMIT,
         "is_paid": user.is_paid,
     }
-
 
 @app.get("/api/materials")
 def list_materials(
@@ -246,8 +269,10 @@ def clamp_level(level: float) -> float:
     return max(1.0, min(3.0, float(level)))
 
 def lvl_bucket(level: float) -> int:
-    if level < 1.67: return 1
-    if level < 2.67: return 2
+    if level < 1.67:
+        return 1
+    if level < 2.67:
+        return 2
     return 3
 
 def allowed_subjects(exam: str, track: str) -> List[str]:
@@ -366,41 +391,47 @@ def gen_tps_pk(level: float):
         a = random.randint(2, 10)
         d = random.randint(2, 5 + b)
         n = random.randint(5, 7 + b)
-        seq = [a + i*d for i in range(n-1)]
-        ans = a + (n-1)*d
-        opsi = [ans, ans+d, ans-d, ans+2*d]
+        seq = [a + i * d for i in range(n - 1)]
+        ans = a + (n - 1) * d
+        opsi = [ans, ans + d, ans - d, ans + 2 * d]
         random.shuffle(opsi)
-        return pack("TPS-PK",
-                    f"Tentukan suku ke-{n} dari: {', '.join(map(str, seq))}, ...",
-                    list(map(str, opsi)),
-                    opsi.index(ans),
-                    f"U_n = a+(n-1)d = {a}+({n}-1)*{d} = {ans}",
-                    ["deret aritmetika"])
+        return pack(
+            "TPS-PK",
+            f"Tentukan suku ke-{n} dari: {', '.join(map(str, seq))}, ...",
+            list(map(str, opsi)),
+            opsi.index(ans),
+            f"U_n = a+(n-1)d = {a}+({n}-1)*{d} = {ans}",
+            ["deret aritmetika"],
+        )
     if mode == "persen":
         harga = random.randint(50, 200) * 1000
         diskon = random.choice([10, 15, 20, 25, 30])
         bayar = harga * (100 - diskon) // 100
         opsi = [bayar, bayar + 5000, bayar - 5000, bayar + 10000]
         random.shuffle(opsi)
-        return pack("TPS-PK",
-                    f"Barang Rp{harga:,} diskon {diskon}%. Harga bayar…",
-                    [f"Rp{x:,}" for x in opsi],
-                    opsi.index(bayar),
-                    f"Bayar = {harga}×(100-{diskon})/100 = {bayar}",
-                    ["persen", "diskon"])
+        return pack(
+            "TPS-PK",
+            f"Barang Rp{harga:,} diskon {diskon}%. Harga bayar…",
+            [f"Rp{x:,}" for x in opsi],
+            opsi.index(bayar),
+            f"Bayar = {harga}×(100-{diskon})/100 = {bayar}",
+            ["persen", "diskon"],
+        )
     x = sp.Symbol("x")
     a = random.randint(2, 9)
     b0 = random.randint(1, 15)
     c = random.randint(10, 50)
-    sol = sp.solve(sp.Eq(a*x + b0, c))[0]
+    sol = sp.solve(sp.Eq(a * x + b0, c))[0]
     opsi = [sol, sol + 1, sol - 1, sol + 2]
     random.shuffle(opsi)
-    return pack("TPS-PK",
-                f"Selesaikan: {a}x + {b0} = {c}",
-                [str(o) for o in opsi],
-                opsi.index(sol),
-                f"x = ({c}-{b0})/{a} = {sp.nsimplify(sol)}",
-                ["persamaan linear"])
+    return pack(
+        "TPS-PK",
+        f"Selesaikan: {a}x + {b0} = {c}",
+        [str(o) for o in opsi],
+        opsi.index(sol),
+        f"x = ({c}-{b0})/{a} = {sp.nsimplify(sol)}",
+        ["persamaan linear"],
+    )
 
 def gen_pm(level: float):
     mode = random.choice(["rasio", "fungsi", "peluang"])
@@ -408,29 +439,46 @@ def gen_pm(level: float):
         a = random.randint(2, 8)
         b = random.randint(2, 8)
         k = random.randint(2, 6)
-        ans = b*k
-        opsi = [ans, ans+b, ans-b, ans+2*b]
+        ans = b * k
+        opsi = [ans, ans + b, ans - b, ans + 2 * b]
         random.shuffle(opsi)
-        return pack("PM", f"Perbandingan A:B={a}:{b}. Jika A={a*k}, B=…",
-                    [str(x) for x in opsi], opsi.index(ans),
-                    "Gunakan faktor pengali k pada rasio.", ["rasio"])
+        return pack(
+            "PM",
+            f"Perbandingan A:B={a}:{b}. Jika A={a*k}, B=…",
+            [str(x) for x in opsi],
+            opsi.index(ans),
+            "Gunakan faktor pengali k pada rasio.",
+            ["rasio"],
+        )
     if mode == "fungsi":
-        m = random.randint(2, 6); n = random.randint(1, 7); x0 = random.randint(1, 5)
-        y = m*x0 + n
-        opsi = [y, y+m, y-m, y+2]
+        m = random.randint(2, 6)
+        n = random.randint(1, 7)
+        x0 = random.randint(1, 5)
+        y = m * x0 + n
+        opsi = [y, y + m, y - m, y + 2]
         random.shuffle(opsi)
-        return pack("PM", f"Diketahui f(x)={m}x+{n}. f({x0})=…",
-                    [str(x) for x in opsi], opsi.index(y),
-                    f"Substitusi: f({x0})={m}·{x0}+{n}={y}", ["fungsi"])
+        return pack(
+            "PM",
+            f"Diketahui f(x)={m}x+{n}. f({x0})=…",
+            [str(x) for x in opsi],
+            opsi.index(y),
+            f"Substitusi: f({x0})={m}·{x0}+{n}={y}",
+            ["fungsi"],
+        )
     total = random.choice([6, 8, 10, 12])
-    red = random.randint(1, total-1)
+    red = random.randint(1, total - 1)
     correct = f"{red}/{total}"
     wrongs = [f"{total}/{red}", f"{red}/{total+2}", f"{red+1}/{total}"]
     opsi = [correct] + wrongs
     random.shuffle(opsi)
-    return pack("PM", f"Ada {total} bola, {red} merah. Peluang ambil merah…",
-                opsi, opsi.index(correct),
-                "Peluang = kejadian diinginkan / total.", ["peluang"])
+    return pack(
+        "PM",
+        f"Ada {total} bola, {red} merah. Peluang ambil merah…",
+        opsi,
+        opsi.index(correct),
+        "Peluang = kejadian diinginkan / total.",
+        ["peluang"],
+    )
 
 def gen_litbin(level: float):
     p = random.choice(READING_ID)
@@ -443,7 +491,7 @@ def gen_litbing(level: float):
         "text": (
             "Small habits often produce meaningful progress over time. However, results are rarely immediate. "
             "Consistency, feedback, and realistic goals help people maintain new routines and avoid giving up too early."
-        )
+        ),
     }
     teks, opsi, kunci, pemb = gen_reading("simpulan", passage)
     return pack("LITBING", teks, opsi, kunci, pemb, ["english reading", "conclusion"])
@@ -455,59 +503,80 @@ def gen_mat(level: float, advanced: bool):
         a = random.randint(2, 9)
         b0 = random.randint(1, 15)
         c = random.randint(10, 50)
-        sol = sp.solve(sp.Eq(a*x + b0, c))[0]
-        opsi = [sol, sol+1, sol-1, sol+2]
+        sol = sp.solve(sp.Eq(a * x + b0, c))[0]
+        opsi = [sol, sol + 1, sol - 1, sol + 2]
         random.shuffle(opsi)
-        return pack("TKA-MAT",
-                    f"Selesaikan: {a}x + {b0} = {c}",
-                    [str(o) for o in opsi],
-                    opsi.index(sol),
-                    f"x = ({c}-{b0})/{a} = {sp.nsimplify(sol)}",
-                    ["linear"])
-    a1 = random.randint(1, 6+b); b1 = random.randint(1, 6+b)
-    a2 = random.randint(1, 6+b); b2 = random.randint(1, 6+b)
-    x0 = random.randint(1, 8); y0 = random.randint(1, 8)
-    c1 = a1*x0 + b1*y0
-    c2 = a2*x0 + b2*y0
-    opsi = [x0, x0+1, x0-1, x0+2]
+        return pack(
+            "TKA-MAT",
+            f"Selesaikan: {a}x + {b0} = {c}",
+            [str(o) for o in opsi],
+            opsi.index(sol),
+            f"x = ({c}-{b0})/{a} = {sp.nsimplify(sol)}",
+            ["linear"],
+        )
+    a1 = random.randint(1, 6 + b)
+    b1 = random.randint(1, 6 + b)
+    a2 = random.randint(1, 6 + b)
+    b2 = random.randint(1, 6 + b)
+    x0 = random.randint(1, 8)
+    y0 = random.randint(1, 8)
+    c1 = a1 * x0 + b1 * y0
+    c2 = a2 * x0 + b2 * y0
+    opsi = [x0, x0 + 1, x0 - 1, x0 + 2]
     random.shuffle(opsi)
-    return pack("TKA-MAT-LANJUT",
-                f"Diketahui:\n{a1}x+{b1}y={c1}\n{a2}x+{b2}y={c2}\nNilai x adalah…",
-                [str(o) for o in opsi],
-                opsi.index(x0),
-                "Selesaikan SPLDV dengan eliminasi/substitusi untuk mendapatkan x.",
-                ["SPLDV"])
+    return pack(
+        "TKA-MAT-LANJUT",
+        f"Diketahui:\n{a1}x+{b1}y={c1}\n{a2}x+{b2}y={c2}\nNilai x adalah…",
+        [str(o) for o in opsi],
+        opsi.index(x0),
+        "Selesaikan SPLDV dengan eliminasi/substitusi untuk mendapatkan x.",
+        ["SPLDV"],
+    )
 
 def gen_fisika(level: float):
     mode = random.choice(["v", "F"])
     if mode == "v":
-        s = random.randint(20, 200); t = random.randint(2, 20)
-        v = s/t
-        opsi = [v, v+1, v-1, v+2]
+        s = random.randint(20, 200)
+        t = random.randint(2, 20)
+        v = s / t
+        opsi = [v, v + 1, v - 1, v + 2]
         random.shuffle(opsi)
-        return pack("TKA-FISIKA",
-                    f"Benda menempuh {s} m dalam {t} s. Kelajuan (m/s)…",
-                    [str(o) for o in opsi], opsi.index(v),
-                    "v = s/t", ["GLB"])
-    m = random.randint(2, 10); a = random.randint(2, 10)
-    F = m*a
-    opsi = [F, F+m, F-m, F+2*m]
+        return pack(
+            "TKA-FISIKA",
+            f"Benda menempuh {s} m dalam {t} s. Kelajuan (m/s)…",
+            [str(o) for o in opsi],
+            opsi.index(v),
+            "v = s/t",
+            ["GLB"],
+        )
+    m = random.randint(2, 10)
+    a = random.randint(2, 10)
+    F = m * a
+    opsi = [F, F + m, F - m, F + 2 * m]
     random.shuffle(opsi)
-    return pack("TKA-FISIKA",
-                f"Gaya pada m={m} kg, a={a} m/s² adalah… (N)",
-                [str(o) for o in opsi], opsi.index(F),
-                "F = m·a", ["Hukum Newton II"])
+    return pack(
+        "TKA-FISIKA",
+        f"Gaya pada m={m} kg, a={a} m/s² adalah… (N)",
+        [str(o) for o in opsi],
+        opsi.index(F),
+        "F = m·a",
+        ["Hukum Newton II"],
+    )
 
 def gen_kimia(level: float):
     m = random.randint(10, 120)
     Mr = random.choice([18, 44, 58, 60, 98])
-    n = round(m/Mr, 2)
-    opsi = [n, round(n+0.1,2), round(max(n-0.1,0),2), round(n+0.2,2)]
+    n = round(m / Mr, 2)
+    opsi = [n, round(n + 0.1, 2), round(max(n - 0.1, 0), 2), round(n + 0.2, 2)]
     random.shuffle(opsi)
-    return pack("TKA-KIMIA",
-                f"Jumlah mol untuk massa {m} g dengan Mr {Mr} adalah…",
-                [str(o) for o in opsi], opsi.index(n),
-                "n = m/Mr", ["mol"])
+    return pack(
+        "TKA-KIMIA",
+        f"Jumlah mol untuk massa {m} g dengan Mr {Mr} adalah…",
+        [str(o) for o in opsi],
+        opsi.index(n),
+        "n = m/Mr",
+        ["mol"],
+    )
 
 def gen_biologi(level: float):
     teks = "Organel tempat respirasi sel adalah…"
