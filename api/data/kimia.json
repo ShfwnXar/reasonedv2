@@ -1,0 +1,18 @@
+[
+  {
+    "id": "KIMIA__stoikiometri",
+    "subject": "KIMIA",
+    "chapter": "Stoikiometri (Mol)",
+    "summary": "Stoikiometri membahas perhitungan zat berdasarkan mol, massa, dan koefisien reaksi.",
+    "formulas": "n = m/Mr\nPV = nRT (gas ideal)\nPerbandingan koefisien = perbandingan mol",
+    "examples": "Jika m=18 g, Mr=18\nn=18/18=1 mol"
+  },
+  {
+    "id": "KIMIA__asam-basa",
+    "subject": "KIMIA",
+    "chapter": "Asam Basa",
+    "summary": "Asam meningkatkan konsentrasi H+, basa meningkatkan OH-. pH menunjukkan tingkat keasaman.",
+    "formulas": "pH = -log[H+]\npOH = -log[OH-]\npH + pOH = 14 (25°C)",
+    "examples": "[H+]=10^-3 → pH=3"
+  }
+]

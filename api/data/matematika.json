@@ -1,0 +1,26 @@
+[
+  {
+    "id": "MATEMATIKA__limit-fungsi",
+    "subject": "MATEMATIKA",
+    "chapter": "Limit Fungsi",
+    "summary": "Limit adalah nilai pendekatan fungsi saat x mendekati suatu nilai tertentu. Limit dipakai untuk turunan, integral, dan analisis grafik.",
+    "formulas": "lim x→a f(x)\nSifat limit:\n- lim(f+g)=lim f + lim g\n- lim(f·g)=lim f · lim g\n- lim(f/g)=lim f / lim g (syarat lim g ≠ 0)",
+    "examples": "Contoh:\nlim x→2 (x^2-4)/(x-2)\nFaktorkan: (x-2)(x+2)/(x-2)=x+2\nJawab: 4"
+  },
+  {
+    "id": "MATEMATIKA__turunan",
+    "subject": "MATEMATIKA",
+    "chapter": "Turunan",
+    "summary": "Turunan menyatakan laju perubahan. Aplikasi: gradien garis singgung, kecepatan sesaat, titik maksimum/minimum.",
+    "formulas": "Definisi:\nf'(x)=lim h→0 (f(x+h)-f(x))/h\nAturan cepat:\n- (x^n)' = n x^(n-1)\n- (k·f)' = k·f'\n- (f+g)' = f'+g'\n- (f·g)' = f'g + fg'\n- (f/g)' = (f'g - fg')/g^2",
+    "examples": "Jika f(x)=3x^2-5x+2\nMaka f'(x)=6x-5"
+  },
+  {
+    "id": "MATEMATIKA__integral",
+    "subject": "MATEMATIKA",
+    "chapter": "Integral Dasar",
+    "summary": "Integral adalah kebalikan turunan. Dipakai untuk luas daerah, volume, dan akumulasi.",
+    "formulas": "∫ x^n dx = x^(n+1)/(n+1) + C (n≠-1)\n∫ 1/x dx = ln|x| + C\n∫ k·f(x) dx = k∫ f(x) dx",
+    "examples": "∫ (6x-5) dx = 3x^2 - 5x + C"
+  }
+]

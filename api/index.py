@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Callable, Tuple, Optional
 import random, time, os, base64, json, hmac, hashlib, secrets
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import sympy as sp
 import jwt
@@ -157,12 +158,6 @@ class ExplainReq(BaseModel):
     token: str
     question: str
 
-class TutorChatReq(BaseModel):
-    mode: str = "by_chapter"
-    chapter_id: int
-    subject: str
-    question: str
-
 @app.post("/api/register")
 def register(req: RegisterReq, db: Session = Depends(get_db)):
     username = req.username.strip().lower()
@@ -203,60 +198,6 @@ def me(user: User = Depends(get_current_user)):
         "is_paid": user.is_paid,
     }
 
-@app.get("/api/materials")
-def list_materials(
-    subject: str = Query(...),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    sub = (subject or "").strip().upper()
-    rows = db.query(Material).filter(Material.subject == sub).order_by(Material.id.asc()).all()
-    return [{"id": r.id, "subject": r.subject, "chapter": r.chapter} for r in rows]
-
-@app.get("/api/material/{mid}")
-def get_material(
-    mid: int,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    r = db.query(Material).filter(Material.id == mid).first()
-    if not r:
-        raise HTTPException(status_code=404, detail="Materi tidak ditemukan")
-    return {
-        "id": r.id,
-        "subject": r.subject,
-        "chapter": r.chapter,
-        "summary": r.summary or "",
-        "formulas": r.formulas or "",
-        "examples": r.examples or "",
-    }
-
-@app.post("/api/tutor_chat")
-def tutor_chat(
-    req: TutorChatReq,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    r = db.query(Material).filter(Material.id == int(req.chapter_id)).first()
-    if not r:
-        raise HTTPException(status_code=404, detail="Bab tidak ditemukan")
-    q = (req.question or "").lower().strip()
-    if any(k in q for k in ["rumus", "formula", "persamaan"]):
-        ans = r.formulas or "Bab ini belum punya daftar rumus."
-    elif any(k in q for k in ["contoh", "latihan", "soal"]):
-        ans = r.examples or "Bab ini belum punya contoh soal."
-    elif any(k in q for k in ["ringkas", "summary", "inti", "jelaskan", "pengertian"]):
-        ans = r.summary or "Bab ini belum punya ringkasan."
-    else:
-        ans = (
-            "Aku bisa bantu dengan format:\n"
-            "- ketik: ringkas (ringkasan)\n"
-            "- ketik: rumus (rumus/konsep)\n"
-            "- ketik: contoh (contoh/latihan)\n\n"
-            f"Ringkasan:\n{(r.summary or '-')}"
-        )
-    return {"answer": ans}
-
 UTBK_SUBJECTS = ["TPS_PU", "TPS_PPU", "TPS_PBM", "TPS_PK", "LITBIN", "LITBING", "PM"]
 TKA_SAINTEK = ["MAT_WAJIB", "MAT_LANJUT", "FISIKA", "KIMIA", "BIOLOGI"]
 TKA_SOSHUM = ["EKONOMI", "GEOGRAFI", "SEJARAH", "SOSIOLOGI"]
@@ -264,6 +205,90 @@ TKA_SOSHUM = ["EKONOMI", "GEOGRAFI", "SEJARAH", "SOSIOLOGI"]
 @app.get("/api/meta")
 def meta():
     return {"UTBK": UTBK_SUBJECTS, "TKA": {"SAINTEK": TKA_SAINTEK, "SOSHUM": TKA_SOSHUM}}
+
+DATA_DIR = Path(__file__).parent / "data"
+
+def load_subject_json(subject: str) -> list:
+    subject = (subject or "").strip().upper()
+    file_map = {
+        "MATEMATIKA": "matematika.json",
+        "FISIKA": "fisika.json",
+        "KIMIA": "kimia.json",
+    }
+    fname = file_map.get(subject)
+    if not fname:
+        return []
+    p = DATA_DIR / fname
+    if not p.exists():
+        return []
+    return json.loads(p.read_text(encoding="utf-8"))
+
+def find_material_by_id(material_id: str) -> dict:
+    material_id = (material_id or "").strip()
+    all_subjects = ["MATEMATIKA", "FISIKA", "KIMIA"]
+    for sub in all_subjects:
+        arr = load_subject_json(sub)
+        for item in arr:
+            if str(item.get("id")) == material_id:
+                return item
+    return {}
+
+@app.get("/api/materials")
+def get_materials(subject: str, user: User = Depends(get_current_user)):
+    arr = load_subject_json(subject)
+    return [{"id": x["id"], "subject": x["subject"], "chapter": x["chapter"]} for x in arr]
+
+@app.get("/api/material/{material_id}")
+def get_material(material_id: str, user: User = Depends(get_current_user)):
+    m = find_material_by_id(material_id)
+    if not m:
+        raise HTTPException(status_code=404, detail="Materi tidak ditemukan")
+    return {
+        "id": m["id"],
+        "subject": m["subject"],
+        "chapter": m["chapter"],
+        "summary": m.get("summary", ""),
+        "formulas": m.get("formulas", ""),
+        "examples": m.get("examples", "")
+    }
+
+class TutorChatReq(BaseModel):
+    mode: str = "by_chapter"
+    chapter_id: str
+    subject: str
+    question: str
+
+@app.post("/api/tutor_chat")
+def tutor_chat(req: TutorChatReq, user: User = Depends(get_current_user)):
+    m = find_material_by_id(req.chapter_id)
+    if not m:
+        raise HTTPException(status_code=404, detail="Bab tidak ditemukan")
+
+    q = (req.question or "").strip().lower()
+    summary = m.get("summary", "")
+    formulas = m.get("formulas", "")
+    examples = m.get("examples", "")
+
+    if any(k in q for k in ["ringkasan", "inti", "jelaskan", "konsep", "materi", "pengertian"]):
+        ans = f"📌 Ringkasan:\n{summary or '-'}"
+        return {"answer": ans}
+
+    if any(k in q for k in ["rumus", "formula", "persamaan"]):
+        ans = f"🧮 Rumus/Konsep:\n{formulas or '-'}"
+        return {"answer": ans}
+
+    if any(k in q for k in ["contoh", "latihan", "penerapan"]):
+        ans = f"📝 Contoh:\n{examples or '-'}"
+        return {"answer": ans}
+
+    ans = (
+        f"📘 {m['subject']} — {m['chapter']}\n\n"
+        f"Ringkasan:\n{summary or '-'}\n\n"
+        f"Rumus/Konsep:\n{formulas or '-'}\n\n"
+        f"Contoh:\n{examples or '-'}\n\n"
+        "Kamu bisa tanya: 'rumusnya?', 'contohnya?', 'ringkasannya?'"
+    )
+    return {"answer": ans}
 
 def clamp_level(level: float) -> float:
     return max(1.0, min(3.0, float(level)))
