@@ -18,23 +18,18 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# =======================
-# DB MODELS
-# =======================
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-
     username = Column(String(50), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-
-    role = Column(String(20), default="student")  # student | admin
+    role = Column(String(20), default="student")
     is_paid = Column(Boolean, default=False)
     attempts_used = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -42,29 +37,21 @@ class User(Base):
 class Material(Base):
     __tablename__ = "materials"
     id = Column(Integer, primary_key=True, index=True)
-
-    subject = Column(String(30), index=True, nullable=False)   # contoh: KIMIA
+    subject = Column(String(30), index=True, nullable=False)
     chapter = Column(String(100), nullable=False)
-
     summary = Column(Text, default="")
     formulas = Column(Text, default="")
     examples = Column(Text, default="")
 
 Base.metadata.create_all(bind=engine)
 
-# =======================
-# CONFIG
-# =======================
 JWT_SECRET = os.environ.get("JWT_SECRET", "DEV_JWT_CHANGE_ME")
 JWT_ALG = "HS256"
-JWT_EXPIRE_HOURS = 24 * 7  # 7 hari
+JWT_EXPIRE_HOURS = 24 * 7
 
 FREE_ATTEMPT_LIMIT = 3
 REASONED_SECRET = os.environ.get("REASONED_SECRET", "DEV_QTOKEN_CHANGE_ME")
 
-# =======================
-# JWT HELPERS
-# =======================
 def make_jwt(user: User) -> str:
     payload = {
         "sub": user.username,
@@ -96,9 +83,6 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
     return u
 
-# =======================
-# QUESTION TOKEN (HMAC)
-# =======================
 def b64e(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode("utf-8").rstrip("=")
 
@@ -122,12 +106,9 @@ def read_token(token: str) -> dict:
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid token")
 
-# =======================
-# REQUEST MODELS
-# =======================
 class RegisterReq(BaseModel):
     username: str = Field(min_length=3, max_length=30)
-    password: str = Field(min_length=6, max_length=72)  # bcrypt max 72 bytes
+    password: str = Field(min_length=6, max_length=72)
 
 class LoginReq(BaseModel):
     username: str
@@ -158,19 +139,14 @@ class TutorChatReq(BaseModel):
     subject: str
     question: str
 
-# =======================
-# AUTH ENDPOINTS
-# =======================
 @app.post("/api/register")
 def register(req: RegisterReq, db: Session = Depends(get_db)):
     username = req.username.strip().lower()
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Username already used")
-
     pw = req.password or ""
     if len(pw.encode("utf-8")) > 72:
         raise HTTPException(status_code=400, detail="Password maksimal 72 byte/karakter.")
-
     u = User(
         username=username,
         password_hash=bcrypt.hash(pw),
@@ -181,7 +157,6 @@ def register(req: RegisterReq, db: Session = Depends(get_db)):
     db.add(u)
     db.commit()
     db.refresh(u)
-
     token = make_jwt(u)
     return {"token": token, "user": u.username, "role": u.role, "is_paid": u.is_paid}
 
@@ -191,7 +166,6 @@ def login(req: LoginReq, db: Session = Depends(get_db)):
     u = db.query(User).filter(User.username == username).first()
     if not u or not bcrypt.verify(req.password, u.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
     token = make_jwt(u)
     return {"token": token, "user": u.username, "role": u.role, "is_paid": u.is_paid}
 
@@ -205,9 +179,6 @@ def me(user: User = Depends(get_current_user)):
         "free_limit": FREE_ATTEMPT_LIMIT,
     }
 
-# =======================
-# MATERIAL ENDPOINTS (login required)
-# =======================
 @app.get("/api/materials")
 def list_materials(
     subject: str = Query(...),
@@ -245,9 +216,7 @@ def tutor_chat(
     r = db.query(Material).filter(Material.id == int(req.chapter_id)).first()
     if not r:
         raise HTTPException(status_code=404, detail="Bab tidak ditemukan")
-
     q = (req.question or "").lower().strip()
-
     if any(k in q for k in ["rumus", "formula", "persamaan"]):
         ans = r.formulas or "Bab ini belum punya daftar rumus."
     elif any(k in q for k in ["contoh", "latihan", "soal"]):
@@ -264,9 +233,6 @@ def tutor_chat(
         )
     return {"answer": ans}
 
-# =======================
-# META & SUBJECTS (SOAL)
-# =======================
 UTBK_SUBJECTS = ["TPS_PU", "TPS_PPU", "TPS_PBM", "TPS_PK", "LITBIN", "LITBING", "PM"]
 TKA_SAINTEK = ["MAT_WAJIB", "MAT_LANJUT", "FISIKA", "KIMIA", "BIOLOGI"]
 TKA_SOSHUM = ["EKONOMI", "GEOGRAFI", "SEJARAH", "SOSIOLOGI"]
@@ -395,7 +361,6 @@ def gen_tps_pbm(level: float):
 def gen_tps_pk(level: float):
     b = lvl_bucket(level)
     mode = random.choice(["deret", "persen", "linear"])
-
     if mode == "deret":
         a = random.randint(2, 10)
         d = random.randint(2, 5 + b)
@@ -410,7 +375,6 @@ def gen_tps_pk(level: float):
                     opsi.index(ans),
                     f"U_n = a+(n-1)d = {a}+({n}-1)*{d} = {ans}",
                     ["deret aritmetika"])
-
     if mode == "persen":
         harga = random.randint(50, 200) * 1000
         diskon = random.choice([10, 15, 20, 25, 30])
@@ -423,7 +387,6 @@ def gen_tps_pk(level: float):
                     opsi.index(bayar),
                     f"Bayar = {harga}×(100-{diskon})/100 = {bayar}",
                     ["persen", "diskon"])
-
     x = sp.Symbol("x")
     a = random.randint(2, 9)
     b0 = random.randint(1, 15)
@@ -595,9 +558,6 @@ def generate_one(subject: str, level: float) -> dict:
     fn = wchoice(REGISTRY[subject])
     return fn(level)
 
-# =======================
-# QUOTA
-# =======================
 def enforce_quota(user: User):
     if user.role == "admin" or user.is_paid:
         return
@@ -610,28 +570,21 @@ def consume_attempt(db: Session, user: User):
     user.attempts_used += 1
     db.commit()
 
-# =======================
-# SOAL ENDPOINTS (auth required)
-# =======================
 @app.post("/api/generate_set")
 def generate_set(req: GenSetReq, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     enforce_quota(user)
-
     level = clamp_level(req.level)
     if req.seed is not None:
         random.seed(int(req.seed))
-
     exam = req.exam.upper()
     track = req.track.upper()
     subjects = allowed_subjects(exam, track)
-
     if req.subject == "MIX":
         picked = [random.choice(subjects) for _ in range(req.n)]
     else:
         if req.subject not in subjects:
             raise HTTPException(status_code=400, detail="Subject not allowed for this exam/track")
         picked = [req.subject] * req.n
-
     out = []
     for sub in picked:
         q = generate_one(sub, level)
@@ -650,7 +603,6 @@ def generate_set(req: GenSetReq, db: Session = Depends(get_db), user: User = Dep
             "opsi": q["opsi"],
             "token": token
         })
-
     consume_attempt(db, user)
     return {"exam": exam, "track": track, "n": req.n, "questions": out}
 
@@ -662,11 +614,9 @@ def check_set(req: CheckSetReq, user: User = Depends(get_current_user)):
         data = read_token(item.token)
         if time.time() > data.get("exp", 0):
             raise HTTPException(status_code=400, detail="Token expired")
-
         kunci = int(data["kunci"])
         correct = int(item.answer) == kunci
         score += 1 if correct else 0
-
         results.append({
             "correct": correct,
             "correct_index": kunci,
@@ -675,7 +625,6 @@ def check_set(req: CheckSetReq, user: User = Depends(get_current_user)):
             "kategori": data.get("kategori", ""),
             "subject": data.get("subject", "")
         })
-
     return {"score": score, "total": len(results), "results": results}
 
 @app.post("/api/explain")
@@ -683,26 +632,20 @@ def explain(req: ExplainReq, user: User = Depends(get_current_user)):
     data = read_token(req.token)
     if time.time() > data.get("exp", 0):
         raise HTTPException(status_code=400, detail="Token expired")
-
     q = (req.question or "").strip().lower()
     pemb = data.get("pembahasan", "")
     konsep = data.get("konsep", [])
     kategori = data.get("kategori", "")
     subject = data.get("subject", "")
-
     if any(k in q for k in ["konsep", "materi", "topik"]):
         return {"answer": f"Kategori: {kategori} ({subject})\nKonsep: {', '.join(konsep) if konsep else '-'}"}
-
     if any(k in q for k in ["rumus", "formula"]):
         return {"answer": f"Rumus mengikuti konsep.\n\nPembahasan:\n{pemb}"}
-
     if any(k in q for k in ["langkah", "cara", "step"]):
         lines = [ln.strip() for ln in pemb.split("\n") if ln.strip()]
         bullets = "\n".join([f"- {ln}" for ln in lines[:10]]) if lines else pemb
         return {"answer": f"Langkah ringkas:\n{bullets}"}
-
     if any(k in q for k in ["kunci", "jawaban benar"]):
         kunci = int(data.get("kunci", 0))
         return {"answer": f"Jawaban benar: opsi {['A','B','C','D'][kunci]}."}
-
     return {"answer": f"Tanyakan: konsep/rumus/langkah.\n\nPembahasan:\n{pemb}"}

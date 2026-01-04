@@ -1,6 +1,4 @@
 function apiBase(){
-  const saved = localStorage.getItem("api_base");
-  if(saved) return saved;
   return window.location.origin;
 }
 
