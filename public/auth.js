@@ -1,35 +1,56 @@
+// public/auth.js
+
 function apiBase(){
+  const host = window.location.hostname;
+  if(host === "127.0.0.1" || host === "localhost"){
+    return "http://127.0.0.1:8000";
+  }
   return window.location.origin;
 }
 
 function getToken(){
-  return localStorage.getItem("token");
+  return localStorage.getItem("auth_token");
 }
 
 function setToken(token){
-  localStorage.setItem("token", token);
+  localStorage.setItem("auth_token", token);
 }
 
 function clearToken(){
-  localStorage.removeItem("token");
+  localStorage.removeItem("auth_token");
 }
 
 async function apiFetch(path, options = {}){
-  const headers = options.headers || {};
+  const headers = options.headers ? { ...options.headers } : {};
   const token = getToken();
+
   if(token){
     headers["Authorization"] = "Bearer " + token;
   }
-  headers["Content-Type"] = "application/json";
+
+  if(!headers["Content-Type"] && options.body !== undefined){
+    headers["Content-Type"] = "application/json";
+  }
+
   const res = await fetch(apiBase() + path, {
     ...options,
     headers
   });
-  if(!res.ok){
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "Request failed");
+
+  let data = null;
+  const ct = res.headers.get("content-type") || "";
+  if(ct.includes("application/json")){
+    data = await res.json().catch(() => null);
+  }else{
+    const text = await res.text().catch(() => "");
+    data = text ? { detail: text } : null;
   }
-  return res.json();
+
+  if(!res.ok){
+    throw new Error((data && (data.detail || data.message)) || "Request failed");
+  }
+
+  return data;
 }
 
 async function login(username, password){
@@ -37,7 +58,7 @@ async function login(username, password){
     method: "POST",
     body: JSON.stringify({ username, password })
   });
-  setToken(data.token);
+  if(data && data.token) setToken(data.token);
   return data;
 }
 
@@ -46,15 +67,21 @@ async function register(username, password){
     method: "POST",
     body: JSON.stringify({ username, password })
   });
-  setToken(data.token);
+  if(data && data.token) setToken(data.token);
   return data;
 }
 
 async function me(){
-  return apiFetch("/api/me");
+  return apiFetch("/api/me", { method: "GET" });
+}
+
+function requireAuth(){
+  if(!getToken()){
+    window.location.href = "login.html";
+  }
 }
 
 function logout(){
   clearToken();
-  window.location.href = "/";
+  window.location.href = "login.html";
 }
