@@ -1,51 +1,39 @@
-function pickEl(ids){
-  for(const id of ids){
-    const e = document.getElementById(id);
-    if(e) return e;
-  }
-  return null;
+function toast(title, msg){
+  const t = document.getElementById("toast");
+  if(!t) return;
+  document.getElementById("toastTitle").textContent = title;
+  document.getElementById("toastMsg").textContent = msg;
+  t.classList.add("show");
+  clearTimeout(window.__t);
+  window.__t = setTimeout(()=>t.classList.remove("show"), 2500);
 }
 
-window.addEventListener("DOMContentLoaded", async () => {
-  const hello = pickEl(["helloName","hello","userName"]);
-  const quota = pickEl(["statQuota","quotaText","quotaValue"]);
-  const last  = pickEl(["statLast","lastScoreText","lastScore"]);
-
-  // skor dari localStorage (sesuai soal.js kamu)
-  const lastScore = localStorage.getItem("last_score");
-  if(last) last.textContent = lastScore ? lastScore : "-";
-
-  // nama dari localStorage dulu
-  const u = localStorage.getItem("user") || "User";
-  if(hello) hello.textContent = `Halo, ${u} 👋`;
-
-  // tombol mulai latihan
-  const btnStart = pickEl(["btnStart","btnMulai","startBtn"]);
-  if(btnStart){
-    btnStart.disabled = false;
-    btnStart.addEventListener("click", ()=> location.href = "soal.html");
-  }
-
-  // load quota dari backend
+(async ()=>{
   try{
     const res = await authFetch("/api/me");
     const data = await res.json();
 
     if(!res.ok){
-      if(quota) quota.textContent = data.detail || "-";
-      return;
+      throw new Error(data.detail || "Gagal load profil");
     }
 
-    const remaining = Math.max(0, data.free_limit - data.attempts_used);
-    if(quota) quota.textContent = `Sisa: ${remaining}/${data.free_limit}`;
-    if(hello) hello.textContent = `Halo, ${data.user} 👋`;
+    // ====== NAMA USER ======
+    document.getElementById("hello").textContent =
+      `Halo, ${data.user} 👋`;
 
-    if(btnStart && remaining === 0 && data.role !== "admin" && data.is_paid !== true){
-      btnStart.disabled = true;
-      btnStart.style.opacity = "0.6";
-      btnStart.title = "Kuota habis";
-    }
-  }catch{
-    if(quota) quota.textContent = "-";
+    // ====== QUOTA ======
+    const used = Number(data.attempts_used ?? 0);
+    const limit = Number(data.free_limit ?? 0);
+
+    document.getElementById("quota").textContent =
+      `Sisa: ${Math.max(limit - used, 0)}/${limit}`;
+
+    // ====== SKOR TERAKHIR ======
+    const lastScore = localStorage.getItem("last_score");
+    document.getElementById("lastScore").textContent =
+      lastScore ? lastScore : "-";
+
+  }catch(e){
+    toast("Error", e.message);
   }
-});
+})();

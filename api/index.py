@@ -170,14 +170,15 @@ def login(req: LoginReq, db: Session = Depends(get_db)):
     return {"token": token, "user": u.username, "role": u.role, "is_paid": u.is_paid}
 
 @app.get("/api/me")
-def me(user: User = Depends(get_current_user)):
+def me(user=Depends(get_current_user)):
     return {
         "user": user.username,
         "role": user.role,
-        "is_paid": user.is_paid,
         "attempts_used": user.attempts_used,
-        "free_limit": FREE_ATTEMPT_LIMIT,
+        "free_limit": user.free_limit,
+        "is_paid": user.is_paid,
     }
+
 
 @app.get("/api/materials")
 def list_materials(
