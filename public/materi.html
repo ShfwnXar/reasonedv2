@@ -1,17 +1,17 @@
-<!-- public/materi.html -->
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>REASONED — Materi Kelas 12</title>
   <link rel="stylesheet" href="styles.css?v=final1">
+</head>
+
+<body>
   <script src="auth.js"></script>
   <script>
     requireAuth();
   </script>
-</head>
 
-<body>
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
@@ -29,44 +29,25 @@
     </aside>
 
     <main class="main">
-      <div class="topbar">
-        <div class="title">Belajar Materi Kelas 12</div>
-        <div class="muted">Pilih mapel, muat bab dari database, lalu tanya tutor.</div>
-      </div>
+      <h2>Belajar Materi Kelas 12</h2>
 
       <div class="card">
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-          <label style="font-weight:900;">
-            Mapel:
-            <select id="subject" class="select">
-              <option value="MATEMATIKA">Matematika</option>
-              <option value="FISIKA">Fisika</option>
-              <option value="KIMIA">Kimia</option>
-              <option value="BIOLOGI">Biologi</option>
-            </select>
-          </label>
-          <button class="btn-primary" id="btnLoad" type="button">Muat Bab</button>
-        </div>
+        <label>
+          Mapel:
+          <select id="subject" class="select">
+            <option value="MATEMATIKA">Matematika</option>
+            <option value="FISIKA">Fisika</option>
+            <option value="KIMIA">Kimia</option>
+            <option value="BIOLOGI">Biologi</option>
+          </select>
+        </label>
+        <button class="btn-primary" id="btnLoad">Muat Bab</button>
 
-        <div id="chapters" style="margin-top:14px;"></div>
+        <div id="chapters" style="margin-top:12px;"></div>
       </div>
 
-      <div class="card" id="detail" style="display:none; margin-top:14px;"></div>
-
-      <div class="card" id="chatPanel" style="display:none; margin-top:14px;">
-        <b>Tanya Tutor</b>
-        <div id="chatLog" style="display:flex; flex-direction:column; gap:10px; margin-top:12px; max-height:260px; overflow:auto;"></div>
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <input id="chatInput" class="select" style="flex:1;" placeholder="Ketik: ringkas / rumus / contoh soal">
-          <button class="btn-primary" id="chatSend" type="button">Kirim</button>
-        </div>
-      </div>
+      <div id="detail" class="card" style="display:none; margin-top:12px;"></div>
     </main>
-  </div>
-
-  <div class="toast" id="toast">
-    <b id="toastTitle"></b>
-    <p id="toastMsg"></p>
   </div>
 
   <script src="app-materi.js"></script>

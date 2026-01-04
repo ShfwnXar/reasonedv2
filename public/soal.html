@@ -1,17 +1,17 @@
-<!-- public/soal.html -->
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>REASONED — Latihan UTBK/TKA</title>
   <link rel="stylesheet" href="styles.css?v=final1">
+</head>
+
+<body>
   <script src="auth.js"></script>
   <script>
     requireAuth();
   </script>
-</head>
 
-<body>
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
@@ -29,68 +29,34 @@
     </aside>
 
     <main class="main">
+      <h2>Latihan UTBK/TKA</h2>
+
       <div class="card">
-        <h2 style="margin:0 0 8px;">Latihan UTBK/TKA</h2>
+        <select id="exam" class="select">
+          <option value="UTBK">UTBK</option>
+          <option value="TKA">TKA</option>
+        </select>
 
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-          <label style="font-weight:900;">
-            Exam:
-            <select id="exam" class="select">
-              <option value="UTBK">UTBK</option>
-              <option value="TKA">TKA</option>
-            </select>
-          </label>
+        <select id="track" class="select">
+          <option value="SAINTEK">SAINTEK</option>
+          <option value="SOSHUM">SOSHUM</option>
+        </select>
 
-          <label style="font-weight:900;">
-            Track:
-            <select id="track" class="select">
-              <option value="SAINTEK">SAINTEK</option>
-              <option value="SOSHUM">SOSHUM</option>
-            </select>
-          </label>
+        <select id="subject" class="select"></select>
 
-          <label style="font-weight:900;">
-            Subject:
-            <select id="subject" class="select"></select>
-          </label>
+        <select id="n" class="select">
+          <option>10</option>
+          <option>15</option>
+          <option>20</option>
+        </select>
 
-          <label style="font-weight:900;">
-            Jumlah:
-            <select id="n" class="select">
-              <option>10</option>
-              <option>15</option>
-              <option>20</option>
-            </select>
-          </label>
-
-          <button class="btn-primary" id="btnGen" type="button">Generate</button>
-
-          <button class="btn-secondary" id="btnSubmit" type="button" style="display:none;">
-            Kumpul Jawaban
-          </button>
-        </div>
-
-        <div id="quiz" style="margin-top:14px;"></div>
-
-        <div id="resultBox" class="card" style="margin-top:14px; display:none;"></div>
-
-        <div id="chatPanel" class="card" style="margin-top:14px; box-shadow:none; display:none;">
-          <b>💬 Tutor (tanya lebih lanjut)</b>
-
-          <div id="chatLog" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;"></div>
-
-          <div style="display:flex; gap:10px; margin-top:12px;">
-            <input id="chatInput" class="select" style="flex:1;" placeholder="Tanya konsep/rumus/langkah...">
-            <button class="btn-primary" id="chatSend" type="button">Kirim</button>
-          </div>
-        </div>
+        <button class="btn-primary" id="btnGen">Generate</button>
+        <button class="btn-secondary" id="btnSubmit" style="display:none;">Kumpul</button>
       </div>
-    </main>
-  </div>
 
-  <div class="toast" id="toast">
-    <b id="toastTitle"></b>
-    <p id="toastMsg"></p>
+      <div id="quiz" style="margin-top:12px;"></div>
+      <div id="resultBox" style="display:none;"></div>
+    </main>
   </div>
 
   <script src="app-soal.js"></script>
