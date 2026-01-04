@@ -1,46 +1,62 @@
-// =====================
-// REASONED - auth.js FINAL
-// =====================
-
 function apiBase(){
-  // kalau ada override manual
   const saved = localStorage.getItem("api_base");
   if(saved) return saved;
-
-  // kalau jalan di vercel, otomatis ambil origin domain yang sama
   return window.location.origin;
 }
 
-
 function getToken(){
-  return localStorage.getItem("auth_token") || "";
+  return localStorage.getItem("token");
 }
 
-function requireAuth(){
-  if(!getToken()) location.href = "login.html";
+function setToken(token){
+  localStorage.setItem("token", token);
+}
+
+function clearToken(){
+  localStorage.removeItem("token");
+}
+
+async function apiFetch(path, options = {}){
+  const headers = options.headers || {};
+  const token = getToken();
+  if(token){
+    headers["Authorization"] = "Bearer " + token;
+  }
+  headers["Content-Type"] = "application/json";
+  const res = await fetch(apiBase() + path, {
+    ...options,
+    headers
+  });
+  if(!res.ok){
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Request failed");
+  }
+  return res.json();
+}
+
+async function login(username, password){
+  const data = await apiFetch("/api/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+  setToken(data.token);
+  return data;
+}
+
+async function register(username, password){
+  const data = await apiFetch("/api/register", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+  setToken(data.token);
+  return data;
+}
+
+async function me(){
+  return apiFetch("/api/me");
 }
 
 function logout(){
-  localStorage.clear();
-  location.href = "login.html";
+  clearToken();
+  window.location.href = "/";
 }
-
-async function authFetch(path, options = {}){
-  const url = apiBase() + path;
-  const headers = options.headers ? { ...options.headers } : {};
-  const token = getToken();
-  if(token) headers["Authorization"] = `Bearer ${token}`;
-  return fetch(url, { ...options, headers });
-}
-
-// global logout handler (klik selalu jalan)
-window.addEventListener("DOMContentLoaded", ()=>{
-  const btn = document.getElementById("btnLogout");
-  if(btn){
-    btn.addEventListener("click", (e)=>{
-      e.preventDefault();
-      e.stopPropagation();
-      logout();
-    });
-  }
-});
