@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>REASONED — Register</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="layout" style="align-items:center; justify-content:center; padding:24px;">
+    <div class="card" style="width:min(520px, 100%);">
+      <h2 style="margin:0 0 8px;">Register</h2>
+      <div class="muted" style="margin-bottom:14px;">Buat akun baru</div>
+
+      <form id="registerForm" onsubmit="return false;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <input id="username" class="select" placeholder="Username (min 3)" autocomplete="username">
+          <input id="password" class="select" placeholder="Password (min 6)" type="password" autocomplete="new-password">
+          <button id="btnRegister" class="btn-primary" type="button">Register</button>
+          <div id="err" class="muted" style="min-height:18px;"></div>
+          <a href="login.html" class="muted" style="font-weight:1000;">Sudah punya akun? Login</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script src="app-register.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>REASONED — Dashboard</title>
+  <link rel="stylesheet" href="styles.css?v=final1">
+  <script src="auth.js"></script>
+  <script>
+    requireAuth();
+  </script>
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo"></div>
+        <h2>REASONED</h2>
+      </div>
+
+      <div class="nav">
+        <a class="active" href="dashboard.html">Dashboard</a>
+        <a href="soal.html">Latihan UTBK/TKA</a>
+        <a href="materi.html">Belajar Kelas 12</a>
+      </div>
+
+      <a href="#" id="btnLogout">Logout</a>
+
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="muted"></div>
+      </div>
+
+      <h3 id="helloName">Halo, User 👋</h3>
+
+      <div class="card">
+        <div style="font-weight:900;">Quota</div>
+        <div
+          id="statQuota"
+          style="font-size:28px;font-weight:1000;margin-top:8px;"
+        >
+          -
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:900;">Skor Terakhir</div>
+        <div
+          id="statLast"
+          style="font-size:28px;font-weight:1000;margin-top:8px;"
+        >
+          -
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button
+          class="btn-primary"
+          id="btnStart"
+          type="button"
+          onclick="location.href='soal.html'"
+        >
+          🚀 Mulai Latihan
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast">
+    <b id="toastTitle"></b>
+    <p id="toastMsg"></p>
+  </div>
+
+  <script src="app-dashboard.js"></script>
+</body>
+</html>

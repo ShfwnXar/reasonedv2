@@ -1,0 +1,415 @@
+/* =========================
+   REASONED — FUTURISTIC UI (FINAL + CLICK SAFE)
+   ========================= */
+
+:root{
+  --bg0:#070A12;
+  --bg1:#0B1024;
+  --glass: rgba(255,255,255,.06);
+  --glass2: rgba(255,255,255,.08);
+  --line: rgba(255,255,255,.12);
+  --muted: rgba(255,255,255,.68);
+
+  --brand:#7C6AED;      /* purple */
+  --brand2:#00E5FF;     /* cyan */
+  --brand3:#00FFB2;     /* mint */
+
+  --text:#EAF0FF;
+  --shadow: 0 24px 70px rgba(0,0,0,.55);
+  --shadow2: 0 12px 30px rgba(0,0,0,.45);
+  --radius: 18px;
+}
+
+*{ box-sizing:border-box; }
+html, body{ height:100%; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1100px 600px at 12% 18%, rgba(124,106,237,.25), transparent 55%),
+    radial-gradient(900px 600px at 85% 25%, rgba(0,229,255,.18), transparent 55%),
+    radial-gradient(900px 700px at 65% 85%, rgba(0,255,178,.10), transparent 60%),
+    linear-gradient(120deg, var(--bg0), var(--bg1));
+  overflow-x:hidden;
+}
+
+/* animated grid layer (CLICK SAFE) */
+body:before{
+  content:"";
+  position:fixed; inset:0;
+  background:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity:.22;
+  pointer-events:none !important;
+  mask-image: radial-gradient(70% 60% at 50% 35%, black 40%, transparent 80%);
+}
+
+/* floating glow layer (CLICK SAFE) */
+body:after{
+  content:"";
+  position:fixed; inset:-40px;
+  background: radial-gradient(circle at 30% 20%, rgba(124,106,237,.08), transparent 55%),
+              radial-gradient(circle at 70% 25%, rgba(0,229,255,.06), transparent 60%),
+              radial-gradient(circle at 60% 80%, rgba(0,255,178,.05), transparent 60%);
+  filter: blur(20px);
+  pointer-events:none !important;
+  animation: floatGlow 12s ease-in-out infinite;
+}
+@keyframes floatGlow{
+  0%,100%{ transform: translate3d(0,0,0); }
+  50%{ transform: translate3d(10px,-12px,0); }
+}
+
+/* layout */
+.layout{
+  display:flex;
+  min-height:100vh;
+  position:relative;
+  z-index:10;
+}
+
+/* Sidebar */
+.sidebar{
+  width: 270px;
+  padding: 22px 18px;
+  position: sticky;
+  top:0;
+  height:100vh;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+  border-right: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 50;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding: 10px 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+.brand h2{
+  font-size: 20px;
+  letter-spacing:.8px;
+  margin:0;
+}
+.logo{
+  width:42px;
+  height:42px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(0,229,255,.95), rgba(124,106,237,.85) 45%, rgba(0,255,178,.55) 100%);
+  box-shadow: 0 10px 30px rgba(124,106,237,.25);
+  position:relative;
+}
+.logo:after{
+  content:"";
+  position:absolute;
+  inset:2px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+}
+
+/* nav links */
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top: 16px;
+  position:relative;
+  z-index: 60;
+}
+.nav a{
+  text-decoration:none;
+  color: rgba(255,255,255,.82);
+  font-weight: 900;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  transition: .18s ease;
+  background: transparent;
+  position:relative;
+  overflow:hidden;
+  pointer-events:auto !important; /* CLICK SAFE */
+  z-index: 70;
+}
+.nav a:hover{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.10);
+  transform: translateY(-1px);
+}
+.nav a.active{
+  background: linear-gradient(90deg, rgba(124,106,237,.25), rgba(0,229,255,.12));
+  border-color: rgba(124,106,237,.35);
+  box-shadow: 0 10px 30px rgba(124,106,237,.18);
+}
+.nav a.active:before{
+  content:"";
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:4px;
+  background: linear-gradient(180deg, var(--brand2), var(--brand));
+  border-radius: 14px;
+  opacity:.9;
+}
+
+/* main */
+.main{
+  flex:1;
+  padding: 26px 26px 70px;
+  position:relative;
+  z-index: 10;
+}
+
+/* cards */
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow2);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position:relative;
+  z-index: 10;
+}
+
+h1,h2,h3{ margin: 0 0 10px; }
+h2{ letter-spacing:.2px; }
+.muted{ color: var(--muted); font-weight: 800; }
+
+/* pills */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 1000;
+  color: rgba(255,255,255,.88);
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.12);
+}
+
+/* inputs / selects */
+.select, input, textarea{
+  outline: none;
+  color: var(--text);
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 14px;
+  padding: 12px 12px;
+  font-weight: 900;
+  transition: .18s ease;
+  pointer-events:auto !important; /* CLICK SAFE */
+}
+.select:hover, input:hover, textarea:hover{ border-color: rgba(0,229,255,.28); }
+.select:focus, input:focus, textarea:focus{
+  border-color: rgba(0,229,255,.55);
+  box-shadow: 0 0 0 4px rgba(0,229,255,.12);
+}
+select.select{
+  padding-right: 38px;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(255,255,255,.75) 50%),
+    linear-gradient(135deg, rgba(255,255,255,.75) 50%, transparent 50%),
+    linear-gradient(to right, transparent, transparent);
+  background-position:
+    calc(100% - 18px) calc(1em + 2px),
+    calc(100% - 13px) calc(1em + 2px),
+    calc(100% - 2.6em) 0.6em;
+  background-size: 5px 5px, 5px 5px, 1px 1.8em;
+  background-repeat: no-repeat;
+}
+
+/* buttons */
+.btn-primary, .btn-secondary{
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-weight: 1000;
+  cursor:pointer;
+  transition: .18s ease;
+  display: inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  user-select:none;
+  position:relative;
+  overflow:hidden;
+  pointer-events:auto !important; /* CLICK SAFE */
+  z-index: 20;
+}
+
+.btn-primary{
+  background: linear-gradient(90deg, rgba(124,106,237,.95), rgba(0,229,255,.65));
+  color: #061018;
+  box-shadow: 0 16px 40px rgba(124,106,237,.25);
+}
+.btn-primary:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 18px 60px rgba(0,229,255,.22);
+}
+.btn-primary:active{ transform: translateY(0px) scale(.99); }
+
+/* optional glow on hover */
+.btn-primary:before{
+  content:"";
+  position:absolute;
+  inset:-40%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%),
+              radial-gradient(circle at 70% 60%, rgba(0,255,178,.22), transparent 50%);
+  transform: translateX(-25%) rotate(8deg);
+  opacity:0;
+  transition:.22s ease;
+}
+.btn-primary:hover:before{ opacity:.9; }
+
+.btn-secondary{
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+}
+.btn-secondary:hover{
+  border-color: rgba(124,106,237,.35);
+  background: rgba(124,106,237,.12);
+  transform: translateY(-1px);
+}
+.btn-secondary:active{ transform: translateY(0px) scale(.99); }
+
+button:disabled{
+  opacity: .55;
+  cursor:not-allowed;
+  filter: grayscale(.2);
+}
+
+/* quiz cards spacing */
+#quiz .card{
+  box-shadow: var(--shadow);
+  border-color: rgba(255,255,255,.12);
+}
+
+/* pre */
+pre{
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 10px 28px rgba(0,0,0,.35);
+}
+
+/* toast */
+.toast{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: min(360px, calc(100% - 36px));
+  background: rgba(10,12,20,.75);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 18px;
+  padding: 14px 14px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transform: translateY(18px);
+  opacity: 0;
+  pointer-events:none;
+  transition: .18s ease;
+  z-index: 99999;
+}
+.toast.show{
+  transform: translateY(0);
+  opacity: 1;
+}
+.toast b{ display:block; font-weight: 1000; margin-bottom: 6px; }
+.toast p{ margin:0; color: rgba(255,255,255,.80); font-weight: 800; }
+
+/* responsive */
+@media (max-width: 920px){
+  .sidebar{ width: 220px; }
+}
+@media (max-width: 760px){
+  .layout{ flex-direction:column; }
+  .sidebar{
+    width:100%;
+    height:auto;
+    position:relative;
+    border-right:none;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .main{ padding: 18px; }
+}
+
+
+/* ===== FIX: link Logout jadi gaya tombol/nav (no underline, no purple) ===== */
+.sidebar .nav a,
+.sidebar .nav a:link,
+.sidebar .nav a:visited,
+.sidebar .nav a:hover,
+.sidebar .nav a:active{
+  color: rgba(255,255,255,.86) !important;
+  text-decoration: none !important;
+}
+
+.sidebar .nav a:hover{
+  color: rgba(255,255,255,.95) !important;
+}
+
+/* kalau kamu pakai id btnLogout */
+#btnLogout{
+  color: rgba(255,255,255,.86) !important;
+  text-decoration: none !important;
+}
+#btnLogout:hover{
+  color: rgba(255,255,255,.95) !important;
+}
+
+/* opsional: logout jadi merah futuristik */
+#btnLogout{
+  border: 1px solid rgba(255,80,110,.25);
+}
+#btnLogout:hover{
+  background: rgba(255,80,110,.10);
+  border-color: rgba(255,80,110,.45);
+}
+
+/* ===== SIDEBAR LINK CONSISTENT (dashboard & materi) ===== */
+.sidebar a,
+.sidebar a:link,
+.sidebar a:visited,
+.sidebar a:hover,
+.sidebar a:active{
+  color: rgba(255,255,255,.86) !important;
+  text-decoration: none !important;
+}
+
+/* kalau ada menu yang bentuknya tombol */
+.sidebar .nav a,
+.sidebar .menu a,
+.sidebar .sidebar-menu a{
+  display:block;
+  padding: 12px 12px;
+  border-radius: 14px;
+}
+
+/* khusus tombol logout */
+#btnLogout,
+.sidebar a[href="#"]{
+  color: rgba(255,255,255,.86) !important;
+  text-decoration: none !important;
+}
+
+/* ===== FORCE ALL LINKS (ANTI PURPLE + NO UNDERLINE) ===== */
+a, a:link, a:visited, a:hover, a:active{
+  color: rgba(255,255,255,.86) !important;
+  text-decoration: none !important;
+}
+a:hover{
+  color: rgba(255,255,255,.95) !important;
+}
